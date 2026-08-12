@@ -1,4 +1,3 @@
-javascript
 const nodemailer = require('nodemailer');
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
@@ -10,7 +9,6 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
-
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -18,17 +16,17 @@ module.exports = async (req, res) => {
   const body = req.body;
   const { jsonrpc, id, method, params } = body;
 
-  // 发送成功回复的“小助手”
+  // 发送成功回复的"小助手"
   const sendResult = (result) => {
     res.json({ jsonrpc: '2.0', id, result });
   };
 
-  // 发送错误回复的“小助手”
+  // 发送错误回复的"小助手"
   const sendError = (code, message) => {
     res.json({ jsonrpc: '2.0', id, error: { code, message } });
   };
 
-  // 1. 处理 MCP 的“打招呼”（必须的握手步骤）
+  // 1. 处理 MCP 的"打招呼"（必须的握手步骤）
   if (method === 'initialize') {
     return sendResult({
       protocolVersion: '0.1.0',
@@ -37,7 +35,7 @@ module.exports = async (req, res) => {
     });
   }
 
-  // 2. 告诉 MCP 你有哪些“工具”（列出 send_mail 和 check_mail）
+  // 2. 告诉 MCP 你有哪些"工具"（列出 send_mail 和 check_mail）
   if (method === 'tools/list') {
     return sendResult({
       tools: [
@@ -71,7 +69,7 @@ module.exports = async (req, res) => {
     const toolName = params.name;
     const args = params.arguments || {};
 
-    // 处理“发信”请求
+    // 处理"发信"请求
     if (toolName === 'send_mail') {
       try {
         const { subject, content, sender_name } = args;
@@ -79,7 +77,6 @@ module.exports = async (req, res) => {
         if (!subject || !content) {
           return sendError(-32602, '缺少 subject 或 content 参数');
         }
-
         const displayName = sender_name || 'AI Companion';
         const transporter = nodemailer.createTransport({
           host: 'smtp.qq.com',
@@ -90,14 +87,12 @@ module.exports = async (req, res) => {
             pass: process.env.QQ_AUTH_CODE
           }
         });
-
         const info = await transporter.sendMail({
           from: `"${displayName}" <${process.env.QQ_EMAIL}>`,
           to: process.env.TO_EMAIL || process.env.QQ_EMAIL,
           subject: subject,
           text: content
         });
-
         return sendResult({
           content: [
             { type: 'text', text: JSON.stringify({ success: true, messageId: info.messageId }) }
@@ -108,7 +103,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    // 处理“收信”请求
+    // 处理"收信"请求
     if (toolName === 'check_mail') {
       try {
         const client = new ImapFlow({
@@ -121,7 +116,6 @@ module.exports = async (req, res) => {
           },
           logger: false
         });
-
         await client.connect();
         let lock = await client.getMailboxLock('INBOX');
         let messages = [];
@@ -153,7 +147,6 @@ module.exports = async (req, res) => {
         } else {
           resultText = JSON.stringify({ count: messages.length, emails: messages });
         }
-
         return sendResult({
           content: [
             { type: 'text', text: resultText }
